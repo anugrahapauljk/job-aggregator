@@ -1,0 +1,1 @@
+"""Remote internship digest bot."""

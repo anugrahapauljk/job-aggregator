@@ -1,0 +1,69 @@
+name: Daily internship digest
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 3 * * *' # 09:00 India Standard Time
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-internship-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    if: github.event.repository.private
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install and check
+        run: |
+          python -m pip install -e '.[dev]'
+          ruff check src tests
+          ruff format --check src tests
+          mypy src
+          pytest -q
+      - name: Restore delivery history
+        run: |
+          if git ls-remote --exit-code --heads origin bot-state >/dev/null; then
+            git fetch origin bot-state
+            mkdir -p data
+            git show FETCH_HEAD:jobs.sqlite3 > data/jobs.sqlite3
+          fi
+      - name: Run digest
+        id: bot
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          JOBSPY_PROXIES: ${{ secrets.JOBSPY_PROXIES }}
+        run: python -m internship_bot run
+      - name: Persist delivery history
+        if: always() && steps.bot.outcome != 'skipped'
+        run: |
+          if [ -f data/jobs.sqlite3 ]; then
+            if git ls-remote --exit-code --heads origin bot-state >/dev/null; then
+              git fetch origin bot-state
+              git worktree add --detach ../bot-state FETCH_HEAD
+            else
+              git worktree add --detach ../bot-state HEAD
+              git -C ../bot-state switch --orphan bot-state
+              git -C ../bot-state rm -r -f .
+            fi
+            cp data/jobs.sqlite3 ../bot-state/jobs.sqlite3
+            git -C ../bot-state add jobs.sqlite3
+            if ! git -C ../bot-state diff --cached --quiet; then
+              git -C ../bot-state -c user.name='internship-bot' \
+                -c user.email='internship-bot@users.noreply.github.com' \
+                commit -m 'Update internship delivery history'
+            fi
+            git -C ../bot-state push origin HEAD:bot-state
+          fi

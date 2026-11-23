@@ -1,0 +1,63 @@
+target_roles:
+  - backend engineer
+  - backend developer
+  - software engineer
+  - software developer
+  - systems engineer
+  - systems software
+  - distributed systems
+  - infrastructure engineer
+  - platform engineer
+  - site reliability
+  - database engineer
+  - data engineer
+  - devops
+  - cloud engineer
+  - ml engineer
+  - machine learning engineer
+  - ai engineer
+  - llm engineer
+  - mlops
+  - reinforcement learning
+  - golang developer
+  - python developer
+  - sde
+  - backend
+must_be_remote: true
+must_be_internship: true
+require_india_eligibility: true
+include_keywords: []
+exclude_keywords: []
+min_stipend_inr_per_month: null
+max_experience_years: 0
+fuzzy_title_threshold: 86
+sources:
+  max_results_per_source: 100
+  unstop_search_terms: [backend, software, python, data, machine learning, devops, cloud, AI]
+  unstop_max_pages: 3
+  max_posting_age_days: 30
+  request_delay_seconds: 1.0
+  cache_ttl_minutes: 60
+  linkedin_enabled: true
+  linkedin_search_terms: [remote backend intern, remote software engineer intern, remote machine learning intern]
+  linkedin_results_per_query: 10
+  linkedin_hours_old: 168
+  internshala_enabled: true
+  internshala_slugs:
+    - work-from-home-backend-development-internships
+    - work-from-home-machine-learning-internships
+    - work-from-home-data-science-internships
+    - work-from-home-python-django-internships
+  internshala_max_pages: 2
+ats_companies:
+  greenhouse: []
+  lever: []
+  ashby: []
+  smartrecruiters: []
+email:
+  recipient: anugrahapaul26@gmail.com
+  max_jobs_per_digest: 20
+  send_no_new_jobs: false
+resume:
+  enabled: false
+  provider: null
