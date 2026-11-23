@@ -1,13 +1,12 @@
 # Remote Internship Bot
 
-A one-shot Python 3.11 program for a daily email digest of new remote internships open to applicants in India. This project is being built in reviewable phases. **Phase 5 is complete:** the bot now retries failed sources, converts stated pay to INR, closes stale listings, and includes daily deployment options.
+A Python 3.11 program that sends a daily email digest of new remote internships open to applicants in India.
 
 ## Setup and run
 
 ```bash
 cd remote-internship-bot
-mise install python@3.11.18
-mise exec python@3.11.18 -- python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
 python -m internship_bot dry-run
@@ -49,18 +48,11 @@ The digest shows the top three ranked matches first, followed by other new listi
 
 Edit `config.yaml` to change target roles, keyword lists, ATS company slugs, pay floor, email recipient, and digest size. `require_india_eligibility` keeps remote jobs only when an adapter establishes eligibility for applicants in India or applicants anywhere. An unclear eligibility claim is not treated as confirmed. Listings without stated pay remain eligible when a pay floor is set. Stated pay is converted to INR/month before the pay floor and ranking are applied. Hourly pay assumes 40 hours/week; daily pay assumes five days/week. Unsupported pay periods remain unstated.
 
-Phase 3 groups exact matches by normalized company, title, and location. A fuzzy title pass then groups near matches within the same company using `fuzzy_title_threshold`. Every source listing remains linked to the stored job. Ranking favors target-role phrases in titles, then descriptions, stated stipend, and recent posting dates. Missing posting dates remain eligible. When `max_experience_years` is above zero, the experience filter checks only explicitly labeled requirements or qualifications; a missing section is left unjudged.
-
-## Planned phases
-
-3. Filtering, exact and fuzzy deduplication, scoring, and storage updates — complete.
-4. HTML/plain-text email, SMTP, sent tracking, dry-run preview, and source-health notices — complete.
-5. Retry/backoff, FX conversion, stale handling, live smoke tests, and scheduling/deployment — complete.
-6. Optional fact-constrained tailored résumé PDFs.
+Exact matches are grouped by normalized company, title, and location. A fuzzy title pass then groups near matches within the same company using `fuzzy_title_threshold`. Every source listing remains linked to the stored job. Ranking favors target-role phrases in titles, then descriptions, stated stipend, and recent posting dates. Missing posting dates remain eligible. When `max_experience_years` is above zero, the experience filter checks only explicitly labeled requirements or qualifications; a missing section is left unjudged.
 
 ## Secrets
 
-Copy `.env.example` to `.env` and set `SMTP_USERNAME=anugrahapaul26@gmail.com` and `SMTP_APP_PASSWORD` to a Gmail app password before running `run` with new jobs. The bot uses `smtp.gmail.com:587` with STARTTLS. Keep the app password out of `config.yaml` and Git. `dry-run` needs no SMTP credentials.
+Copy `.env.example` to `.env`. Set `SMTP_USERNAME` to your Gmail address and `SMTP_APP_PASSWORD` to a Gmail app password before running `run` with new jobs. The bot uses `smtp.gmail.com:587` with STARTTLS. Keep the app password out of `config.yaml` and Git. `dry-run` needs no SMTP credentials.
 
 Set `HTTP_PROXY` or `HTTPS_PROXY` in `.env` if HTTP sources need a proxy; httpx reads these variables. `JOBSPY_PROXIES` is a separate comma-separated setting for LinkedIn. Each source is retried up to three times on transient network errors or HTTP 429/5xx, with exponential backoff and `Retry-After` where supplied. JobSpy queries have a configurable delay between search terms.
 
@@ -84,8 +76,8 @@ Alternatively, run locally with a user systemd timer. Put these units under `~/.
 Description=Remote internship digest
 [Service]
 Type=oneshot
-WorkingDirectory=/home/anugrahapaul/Projects/remote-internship-bot
-ExecStart=/home/anugrahapaul/Projects/remote-internship-bot/.venv/bin/python -m internship_bot run
+WorkingDirectory=/path/to/remote-internship-bot
+ExecStart=/path/to/remote-internship-bot/.venv/bin/python -m internship_bot run
 ```
 
 ```ini
@@ -99,11 +91,11 @@ Persistent=true
 WantedBy=timers.target
 ```
 
-Run `systemctl --user daemon-reload` and `systemctl --user enable --now remote-internship-bot.timer`. The timer uses your local timezone. A cron alternative is `30 9 * * * cd /home/anugrahapaul/Projects/remote-internship-bot && .venv/bin/python -m internship_bot run`; cron also uses the machine's timezone. Keep the local SQLite file on persistent storage and avoid overlapping runs.
+Replace `/path/to/remote-internship-bot` with the absolute path to your checkout. Run `systemctl --user daemon-reload` and `systemctl --user enable --now remote-internship-bot.timer`. The timer uses your local timezone. A cron alternative is `30 9 * * * cd /path/to/remote-internship-bot && .venv/bin/python -m internship_bot run`; cron also uses the machine's timezone. Keep the local SQLite file on persistent storage and avoid overlapping runs.
 
 The optional live checks use `pytest -m live -q` and assert that each configured real source returns listings. They are skipped in normal CI because boards may block requests, return zero, or change without a code regression. Set ATS slugs and optional Adzuna keys to include those sources in a live check.
 
-The LinkedIn and Internshala adapters follow the reference repository's public guest and listing-page approach. LinkedIn uses a few remote internship queries and requests descriptions; Internshala walks configured work-from-home filter slugs and parses HTML cards. Both are windowed sources and are never treated as full inventories. These routes may return zero or be rate limited. A live LinkedIn run received HTTP 429 on one query; other queries still returned listings. `JOBSPY_PROXIES` in `.env` accepts a comma-separated list if you have proxies available. **Access notice:** LinkedIn's [robots notice](https://www.linkedin.com/robots.txt) requires express permission for automated access, and Internshala's [terms](https://internshala.com/terms/) prohibit data extraction. Public access does not grant permission. Set `sources.linkedin_enabled` and `sources.internshala_enabled` to `false` to disable them. Indeed via jobspy ([terms](https://www.indeed.com/legal)) and Google Jobs via jobspy ([robots.txt](https://www.google.com/robots.txt)) remain skipped. Naukri via jobspy is skipped until its access policy can be verified.
+The LinkedIn and Internshala adapters follow the reference repository's public guest and listing-page approach. LinkedIn uses remote internship queries and requests descriptions; Internshala walks configured work-from-home filter slugs and parses HTML cards. Both are windowed sources and are never treated as full inventories. These routes may return zero or be rate limited. `JOBSPY_PROXIES` in `.env` accepts a comma-separated list if you have proxies available. **Access notice:** LinkedIn's [robots notice](https://www.linkedin.com/robots.txt) requires express permission for automated access, and Internshala's [terms](https://internshala.com/terms/) prohibit data extraction. Public access does not grant permission. Set `sources.linkedin_enabled` and `sources.internshala_enabled` to `false` to disable them. Indeed via jobspy ([terms](https://www.indeed.com/legal)) and Google Jobs via jobspy ([robots.txt](https://www.google.com/robots.txt)) remain skipped. Naukri via jobspy is skipped until its access policy can be verified.
 
 The enabled endpoints are documented by [RemoteOK](https://remoteok.com/faq), [Himalayas](https://himalayas.app/docs/remote-jobs-api), [Greenhouse](https://docs.greenhouse.io/job-board.html), [Lever](https://github.com/lever/postings-api), [Ashby](https://developers.ashbyhq.com/docs/public-job-posting-api), [SmartRecruiters](https://developers.smartrecruiters.com/docs/endpoints), and [Adzuna](https://developer.adzuna.com/docs/search). [Unstop robots.txt](https://unstop.com/robots.txt) explicitly allows `/api/public/*`.
 
