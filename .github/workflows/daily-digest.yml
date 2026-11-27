@@ -14,8 +14,10 @@ concurrency:
 
 jobs:
   digest:
-    if: github.event.repository.private
     runs-on: ubuntu-latest
+    env:
+      BOT_STATE_KEY: ${{ secrets.BOT_STATE_KEY }}
+      EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT || secrets.SMTP_USERNAME }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -32,10 +34,24 @@ jobs:
           pytest -q
       - name: Restore delivery history
         run: |
+          if [ -z "$BOT_STATE_KEY" ]; then
+            echo 'BOT_STATE_KEY secret is required' >&2
+            exit 1
+          fi
+          python -c 'import os; from cryptography.fernet import Fernet; Fernet(os.environ["BOT_STATE_KEY"].encode())'
+          if [ -z "$EMAIL_RECIPIENT" ]; then
+            echo 'EMAIL_RECIPIENT or SMTP_USERNAME secret is required' >&2
+            exit 1
+          fi
           if git ls-remote --exit-code --heads origin bot-state >/dev/null; then
             git fetch origin bot-state
             mkdir -p data
-            git show FETCH_HEAD:jobs.sqlite3 > data/jobs.sqlite3
+            if git cat-file -e FETCH_HEAD:jobs.sqlite3.enc 2>/dev/null; then
+              git show FETCH_HEAD:jobs.sqlite3.enc > data/jobs.sqlite3.enc
+              python -m internship_bot.state decrypt data/jobs.sqlite3.enc data/jobs.sqlite3
+            elif git cat-file -e FETCH_HEAD:jobs.sqlite3 2>/dev/null; then
+              git show FETCH_HEAD:jobs.sqlite3 > data/jobs.sqlite3
+            fi
           fi
       - name: Run digest
         id: bot
@@ -50,6 +66,7 @@ jobs:
         if: always() && steps.bot.outcome != 'skipped'
         run: |
           if [ -f data/jobs.sqlite3 ]; then
+            python -m internship_bot.state encrypt data/jobs.sqlite3 data/jobs.sqlite3.enc
             if git ls-remote --exit-code --heads origin bot-state >/dev/null; then
               git fetch origin bot-state
               git worktree add --detach ../bot-state FETCH_HEAD
@@ -57,8 +74,9 @@ jobs:
               git worktree add --detach ../bot-state HEAD
               git -C ../bot-state switch --orphan bot-state
             fi
-            cp data/jobs.sqlite3 ../bot-state/jobs.sqlite3
-            git -C ../bot-state add jobs.sqlite3
+            cp data/jobs.sqlite3.enc ../bot-state/jobs.sqlite3.enc
+            git -C ../bot-state rm -f --ignore-unmatch jobs.sqlite3
+            git -C ../bot-state add jobs.sqlite3.enc
             if ! git -C ../bot-state diff --cached --quiet; then
               git -C ../bot-state -c user.name='internship-bot' \
                 -c user.email='internship-bot@users.noreply.github.com' \

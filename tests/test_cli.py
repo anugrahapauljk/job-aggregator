@@ -30,6 +30,8 @@ def test_cli_initializes_database_and_writes_preview(
 def test_run_stores_jobs_but_dry_run_does_not(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("EMAIL_RECIPIENT", "recipient@example.com")
+
     class ExampleSource:
         name = "example"
         complete_inventory = False

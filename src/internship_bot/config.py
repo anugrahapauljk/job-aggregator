@@ -18,14 +18,16 @@ class AtsCompanies(StrictModel):
 
 
 class EmailSettings(StrictModel):
-    recipient: str
+    recipient: str | None = None
     max_jobs_per_digest: int = Field(default=20, ge=1, le=100)
     send_no_new_jobs: bool = False
 
     @field_validator("recipient")
     @classmethod
-    def validate_recipient(cls, value: str) -> str:
+    def validate_recipient(cls, value: str | None) -> str | None:
         # Keep validation local; no network/DNS lookup is needed for configuration.
+        if value is None:
+            return None
         value = value.strip()
         if value.count("@") != 1 or "." not in value.rsplit("@", 1)[1]:
             raise ValueError("recipient must be an email address")

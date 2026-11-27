@@ -1,6 +1,7 @@
 """One-shot command line entry point."""
 
 import argparse
+import os
 import smtplib
 import sqlite3
 import sys
@@ -40,8 +41,11 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     stats: StoreStats | None = None
     try:
-        config = load_config(args.config)
         load_dotenv(args.config.parent / ".env", override=False)
+        config = load_config(args.config)
+        recipient = os.environ.get("EMAIL_RECIPIENT", "").strip() or config.email.recipient
+        if args.command == "run" and recipient is None:
+            raise ValueError("EMAIL_RECIPIENT or email.recipient is required to send email")
         initialize_database(args.db)
         with httpx.Client(
             timeout=20,
@@ -82,9 +86,10 @@ def main(argv: list[str] | None = None) -> int:
                     attention = sources_needing_attention(connection)
                     if jobs or config.email.send_no_new_jobs:
                         digest = render_digest(jobs, attention)
-                        send_digest(digest, config.email.recipient)
+                        assert recipient is not None
+                        send_digest(digest, recipient)
                         mark_sent(connection, digest.job_ids)
-                        print(f"Sent digest with {len(jobs)} jobs to {config.email.recipient}.")
+                        print(f"Sent digest with {len(jobs)} jobs.")
                     else:
                         print("No new jobs; no email sent.")
                     print(f"Closed {closed} stale jobs.")

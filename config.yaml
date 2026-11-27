@@ -55,7 +55,7 @@ ats_companies:
   ashby: []
   smartrecruiters: []
 email:
-  recipient: anugrahapaul26@gmail.com
+  recipient: null
   max_jobs_per_digest: 20
   send_no_new_jobs: false
 resume:

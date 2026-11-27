@@ -11,7 +11,7 @@ from internship_bot.config import AppConfig, load_config
 def test_shipped_config_loads() -> None:
     config = load_config(Path(__file__).resolve().parents[1] / "config.yaml")
     assert config.require_india_eligibility
-    assert config.email.recipient == "anugrahapaul26@gmail.com"
+    assert config.email.recipient is None
     assert "backend engineer" in config.target_roles
 
 
